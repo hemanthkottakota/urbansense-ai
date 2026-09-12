@@ -29,6 +29,15 @@ The convex server has a separate set of environment variables that are accessibl
 
 Currently, these variables include auth-specific keys: JWKS, JWT_PRIVATE_KEY, and SITE_URL.
 
+## Deploy to Vercel
+
+1. Push this repository to GitHub and import it in Vercel. Vercel detects the Vite framework and uses `npm run build` with `dist` as the output directory.
+2. In **Vercel → Project → Settings → Environment Variables**, add `VITE_CONVEX_URL` for Production, Preview, and Development. Its value is your Convex deployment URL, such as `https://your-project.convex.cloud`.
+3. Deploy the frontend. The included `vercel.json` rewrites client routes such as `/dashboard` and `/fleet/123` to the React app, so refreshing or sharing those URLs works.
+4. In the **Convex dashboard → Settings → Environment Variables**, set `CONVEX_SITE_URL` to the deployed Vercel URL (for example, `https://your-app.vercel.app`). This is required by Convex Auth for the email sign-in flow. If you use a custom domain, update this value to that domain after attaching it.
+
+`CONVEX_DEPLOYMENT`, `JWKS`, and `JWT_PRIVATE_KEY` belong to the Convex environment/local development; do not expose them in Vercel or use a `VITE_` prefix.
+
 
 # Using Authentication (Important!)
 
