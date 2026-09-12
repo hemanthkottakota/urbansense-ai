@@ -230,7 +230,10 @@
 .leaflet-interactive:focus {
   outline: none;
 }
-.us-bus-icon,
-.us-bus-icon svg {
+.us-bus-icon {
+  transition: transform 1.4s linear;
+}
+.us-bus-icon svg,
+.us-bus-icon > div {
   transition: transform 0.9s linear;
 }

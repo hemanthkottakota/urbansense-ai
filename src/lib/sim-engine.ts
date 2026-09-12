@@ -626,7 +626,7 @@ const INCIDENT_SPECS: SeedIncidentSpec[] = [
 let incidentCounter = 500;
 
 export function seedIncidents(): Incident[] {
-  const list: Incident[] = INCIDENT_SPECS.map((s) => {
+  const list: (Incident | null)[] = INCIDENT_SPECS.map((s) => {
     const seg = SEGMENTS.find((x) => x.id === `${s.roadId}-s${s.segIdx}`);
     if (!seg) return null;
     const idxF = s.along * (seg.points.length - 1);
@@ -754,7 +754,18 @@ export function computeRoadHealth(
     const riskCount = incidents.filter(
       (x) => x.status !== "resolved" && Math.abs(x.pos.lat - seg.points[0].lat) < 0.004 && Math.abs(x.pos.lng - seg.points[0].lng) < 0.005,
     ).length;
-    const congestionPct = Math.min(100, Math.round(congestionSeed.get(seg.id) ?? rint(15, 70)));
+    const congestionPct = Math.min(
+      100,
+      Math.round(
+        congestionSeed.get(seg.id) ??
+          // stable per-segment pseudo congestion (12-78%) from id hash
+          (() => {
+            let h = 0;
+            for (let i = 0; i < seg.id.length; i++) h = (h * 31 + seg.id.charCodeAt(i)) >>> 0;
+            return 12 + (h % 67);
+          })(),
+      ),
+    );
     const raw =
       100 -
       severityLoad * 4.5 -
@@ -786,4 +797,119 @@ export function bandColor(band: RoadHealth["band"]): string {
     case "Critical":
       return "var(--brand-red)";
   }
+}
+
+// ---------------------------------------------------------------- aggregates
+export interface TrafficPoint {
+  hour: string;
+  density: number;
+  avgSpeed: number;
+}
+
+export function trafficByHour(clockHour: number): TrafficPoint[] {
+  const base = [18, 14, 11, 10, 14, 26, 44, 68, 86, 78, 62, 58, 60, 63, 66, 70, 82, 92, 84, 70, 56, 44, 34, 24];
+  return base.map((d, h) => ({
+    hour: `${String(h).padStart(2, "0")}:00`,
+    density: h === clockHour ? Math.min(100, d + rint(2, 6)) : d,
+    avgSpeed: Math.max(9, Math.round(58 - d * 0.42)),
+  }));
+}
+
+export interface VehicleMixRow {
+  name: string;
+  value: number;
+  color: string;
+}
+
+export function vehicleMix(): VehicleMixRow[] {
+  return [
+    { name: "Cars", value: rint(3800, 4400), color: "#14161a" },
+    { name: "Bikes", value: rint(2600, 3200), color: "#ea580c" },
+    { name: "Buses", value: rint(420, 520), color: "#0284c7" },
+    { name: "Trucks", value: rint(380, 520), color: "#6d7480" },
+    { name: "Autos", value: rint(900, 1200), color: "#16a34a" },
+  ];
+}
+
+export interface CongestionRow {
+  road: string;
+  delayMin: number;
+  congestion: number;
+}
+
+export function congestionByRoad(clockHour: number): CongestionRow[] {
+  const rows: { road: string; congestion: number }[] = [
+    { road: "MG Road", congestion: rint(62, 88) },
+    { road: "Hitech City Main Rd", congestion: rint(70, 95) },
+    { road: "Kukatpally Main Rd", congestion: rint(55, 80) },
+    { road: "Charminar Approach Rd", congestion: rint(48, 74) },
+    { road: "JN Road", congestion: rint(40, 66) },
+    { road: "Ameerpet–Punjagutta Rd", congestion: rint(44, 70) },
+    { road: "Nehru Outer Ring Rd", congestion: rint(24, 44) },
+    { road: "Shamshabad Airport Rd", congestion: rint(18, 40) },
+  ];
+  const peak = clockHour >= 8 && clockHour <= 11 || clockHour >= 17 && clockHour <= 20 ? 1.15 : 0.9;
+  return rows
+    .map((r) => ({
+      ...r,
+      congestion: Math.min(98, Math.round(r.congestion * peak)),
+      delayMin: Math.round((r.congestion * peak) / 9),
+    }))
+    .sort((a, b) => b.congestion - a.congestion);
+}
+
+// ---------------------------------------------------------------- runtime tick
+export function advanceBus(bus: Bus, dtSec: number, pts: LatLng[]): Bus {
+  if (bus.status !== "sensing" || pts.length < 2) return bus;
+  // demo-tuned: end-to-end traversal takes ~4-6 minutes of wall time; the bus
+  // ping-pongs along its corridor so it never teleports across the map
+  const speedFrac = ((bus.speed * 1000) / 3600) * (dtSec / 3000);
+  let p = bus.progress + speedFrac * bus.dir;
+  let dir = bus.dir;
+  if (p >= 1) {
+    p = 1 - (p - 1);
+    dir = -1;
+  }
+  if (p < 0) {
+    p = -p;
+    dir = 1;
+  }
+  const { pos, heading } = posAlong(pts, p);
+  const speed = Math.max(8, Math.min(55, bus.speed + rfloat(-4, 4, 0)));
+  return {
+    ...bus,
+    progress: p,
+    dir: dir as 1 | -1,
+    pos,
+    heading: dir === 1 ? heading : heading + 180,
+    speed,
+  };
+}
+
+export function simulateDetections(
+  buses: Bus[],
+  now: number,
+): { detections: { type: DefectType; segmentId: string; busId: string; at: number; conf: number }[]; notifs: Notification[] } {
+  const out: { type: DefectType; segmentId: string; busId: string; at: number; conf: number }[] = [];
+  const notifs: Notification[] = [];
+  const sensing = buses.filter((b) => b.status === "sensing");
+  const n = rint(1, 2);
+  for (let k = 0; k < n; k++) {
+    const bus = pick(sensing);
+    if (!bus) continue;
+    const seg = pick(SEGMENTS);
+    const type = pick(["pothole", "congestion", "waterlogging", "missing_sign", "damaged_road"] as const);
+    out.push({ type, segmentId: seg.id, busId: bus.id, at: now, conf: rint(72, 92) });
+  }
+  if (out.length > 0) {
+    const t = pick(NOTIF_TEMPLATES);
+    notifs.push({
+      id: `N-${now}-${rint(100, 999)}`,
+      ts: now,
+      kind: t.kind,
+      text: t.text,
+      detail: t.detail,
+    });
+  }
+  return { detections: out, notifs };
 }

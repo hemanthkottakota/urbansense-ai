@@ -1,6 +1,8 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { RequireAuth } from "@/components/RequireAuth";
+import { SimProvider } from "@/state/sim-context";
+import { AppShell } from "@/components/urban/app-shell";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
@@ -12,7 +14,15 @@ import "./index.css";
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
-const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const Dashboard = lazy(() => import("./pages/urban/Dashboard.tsx"));
+const LiveMap = lazy(() => import("./pages/urban/LiveMap.tsx"));
+const RoadConditions = lazy(() => import("./pages/urban/RoadConditions.tsx"));
+const Traffic = lazy(() => import("./pages/urban/Traffic.tsx"));
+const Safety = lazy(() => import("./pages/urban/Safety.tsx"));
+const Maintenance = lazy(() => import("./pages/urban/Maintenance.tsx"));
+const Fleet = lazy(() => import("./pages/urban/Fleet.tsx").then((m) => ({ default: m.Fleet })));
+const BusDetail = lazy(() => import("./pages/urban/Fleet.tsx").then((m) => ({ default: m.BusDetail })));
+const Analytics = lazy(() => import("./pages/urban/Analytics.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -125,13 +135,24 @@ createRoot(document.getElementById("root")!).render(
                 element={<AuthPage redirectAfterAuth="/dashboard" />}
               />
               <Route
-                path="/dashboard"
                 element={
                   <RequireAuth>
-                    <Dashboard />
+                    <SimProvider>
+                      <AppShell />
+                    </SimProvider>
                   </RequireAuth>
                 }
-              />
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/live-map" element={<LiveMap />} />
+                <Route path="/road-conditions" element={<RoadConditions />} />
+                <Route path="/traffic" element={<Traffic />} />
+                <Route path="/safety" element={<Safety />} />
+                <Route path="/maintenance" element={<Maintenance />} />
+                <Route path="/fleet" element={<Fleet />} />
+                <Route path="/fleet/:busId" element={<BusDetail />} />
+                <Route path="/analytics" element={<Analytics />} />
+              </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

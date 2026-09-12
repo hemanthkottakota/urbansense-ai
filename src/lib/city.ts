@@ -326,20 +326,30 @@ export const ROUTES: BusRoute[] = [
   },
 ];
 
-// Road polyline flattened across a route's road path (for bus motion)
+// Road polyline flattened across a route's road path (for bus motion).
+// Direction-aware: each next road is traversed from whichever end is closest
+// to the previous road's end, so the path has no long jumps.
 export function routePolyline(routeId: string): LatLng[] {
   const route = ROUTES.find((r) => r.id === routeId);
   if (!route) return [];
   const pts: LatLng[] = [];
+  let cursor: LatLng | null = null;
   for (const roadId of route.roadPath) {
     const road = ROADS.find((r) => r.id === roadId);
-    if (!road) continue;
-    for (const p of road.points) {
+    if (!road || road.points.length === 0) continue;
+    let chain = road.points;
+    if (cursor) {
+      const dFirst = distM(cursor, chain[0]);
+      const dLast = distM(cursor, chain[chain.length - 1]);
+      if (dLast < dFirst) chain = [...chain].reverse();
+    }
+    for (const p of chain) {
       const last = pts[pts.length - 1];
       if (!last || Math.abs(last.lat - p.lat) > 1e-9 || Math.abs(last.lng - p.lng) > 1e-9) {
         pts.push(p);
       }
     }
+    cursor = pts[pts.length - 1] ?? cursor;
   }
   return pts;
 }
