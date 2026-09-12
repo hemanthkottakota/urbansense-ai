@@ -38,13 +38,6 @@ export default function Maintenance() {
     [issues],
   );
 
-  const counts = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const s of ISSUE_STATUS_ORDER) m.set(s, 0);
-    for (const i of issues) m.set(i.status, (m.get(i.status) ?? 0) + 1);
-    return m;
-  }, [issues]);
-
   const fmt = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: 5 });
   const dayMs = 24 * 3600 * 1000;
   const now = Date.now();

@@ -94,11 +94,14 @@ export function SimProvider({ children }: { children: ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const runningRef = useRef(running);
-  runningRef.current = running;
   const busesRef = useRef(buses);
-  busesRef.current = buses;
   const issuesRef = useRef(issues);
-  issuesRef.current = issues;
+
+  useEffect(() => {
+    runningRef.current = running;
+    busesRef.current = buses;
+    issuesRef.current = issues;
+  }, [running, buses, issues]);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -278,8 +281,6 @@ export function SimProvider({ children }: { children: ReactNode }) {
           mix: Math.random() < 0.15 ? vehicleMix() : prev.mix,
         };
       });
-
-      setClockHour((h) => h); // clockHour drifts on a slower cadence below
     }, 1500);
     return () => clearInterval(t);
   }, []);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
   AlertTriangle,
@@ -23,7 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
-  const { buses, issues, incidents, running, traffic } = useSim();
+  const { buses, issues, incidents, running } = useSim();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<(typeof issues)[number] | null>(null);
 

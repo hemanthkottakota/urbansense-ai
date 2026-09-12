@@ -61,7 +61,7 @@ function useOutsideClose(ref: React.RefObject<HTMLElement | null>, cb: () => voi
 }
 
 export function AppShell() {
-  const { buses, issues, notifications, running, setRunning, unreadCount, markRead, traffic } = useSim();
+  const { buses, notifications, running, setRunning, unreadCount, markRead, traffic } = useSim();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -74,13 +74,6 @@ export function AppShell() {
   const activeBuses = useMemo(
     () => buses.filter((b) => b.status === "sensing").length,
     [buses],
-  );
-  const pendingMaintenance = useMemo(
-    () =>
-      issues.filter((i) =>
-        ["prioritized", "assigned", "repairing"].includes(i.status),
-      ).length,
-    [issues],
   );
 
   return (

@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useSim } from "@/state/sim-context";
 import { CityMap } from "@/components/urban/city-map";
-import { KpiCard, SectionTitle, LiveDot } from "@/components/urban/shared";
+import { SectionTitle, LiveDot } from "@/components/urban/shared";
 import { DEFECT_META, INCIDENT_META } from "@/lib/sim-engine";
-import { routePolyline, ROUTES } from "@/lib/city";
+import { ROUTES } from "@/lib/city";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -147,7 +147,6 @@ export function BusDetail() {
     );
   }
 
-  const pts = routePolyline(bus.routeId);
   const routeIssues = issues.filter((i) => i.confirmingBuses.includes(bus.id));
   const busIncidents = incidents.filter((i) => i.busId === bus.id);
   const on = bus.status === "sensing";
